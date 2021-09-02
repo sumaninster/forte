@@ -33,7 +33,6 @@ pub mod api {
             return Err(Error::new(ErrorKind::Other, "Unsupported Status!"));
         }
         let status = SnakeCase::try_from_str(status.as_str());
-        //println!("{} : {}", request_url, &status.unwrap().to_string());
         let mut request_data = json::JsonValue::new_object();
         let mut position = json::JsonValue::new_object();
         position["latitude"] = JsonValue::from(latitude);
