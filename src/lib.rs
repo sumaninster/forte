@@ -6,22 +6,25 @@ pub mod api {
     use serde::{Deserialize, Serialize};
     use snake_case::SnakeCase;
     use std::env;
+    //use futures::future::{BoxFuture, FutureExt};
+    use std::pin::Pin;
+    use std::future::Future;
 
     #[derive(Debug, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
-    struct Data {
-        id: String,
+    pub struct Data {
+        id: i64,
         data: String,
     }
 
-    fn auth() -> Result<(String, String), Error> {
+    pub fn auth() -> Result<(String, String), Error> {
         let user = match env::var("USER"){
             Ok(u) => u,
-            Err(e) => return Err(Error::new(ErrorKind::Other, "Username not found!")),
+            Err(_e) => return Err(Error::new(ErrorKind::Other, "Username not found!")),
         };
         let pass = match env::var("PASS"){
             Ok(u) => u,
-            Err(e) => return Err(Error::new(ErrorKind::Other, "Password not found!")),
+            Err(_e) => return Err(Error::new(ErrorKind::Other, "Password not found!")),
         };
         Ok((user, pass))
     }
@@ -31,7 +34,7 @@ pub mod api {
             return Err(Error::new(ErrorKind::Other, "Unsupported Status!"));
         }
         let status = SnakeCase::try_from_str(status.as_str());
-        println!("{} : {}", request_url, status.unwrap().to_string());
+        //println!("{} : {}", request_url, &status.unwrap().to_string());
         let mut request_data = json::JsonValue::new_object();
         let mut position = json::JsonValue::new_object();
         position["latitude"] = JsonValue::from(latitude);
@@ -63,17 +66,19 @@ pub mod api {
         Ok(result)
    }
 
-    pub async fn try_call_api(latitude: i64, longitude: i64, status: &String, request_url: &String, retry: i32) {
-        let result = call_api(45, 120, status, request_url).await;
-        match result {
-            Ok(response) => { println!("{:?}", response) },
-            Err(e) => {
-                println!("{:?}", e);
-                if retry > 0 {
-                    try_call_api(latitude, longitude, status, request_url, retry - 1);
-                }
-            },
-        }
+    pub fn try_call_api(latitude: i64, longitude: i64, status: &'static String, request_url: &'static String, retry: i32) -> Pin<Box<dyn Future<Output = ()> + 'static>> {
+        Box::pin(async move {
+            let result = call_api(45, 120, status, request_url).await;
+            match result {
+                Ok(response) => { println!("{:?}", response) },
+                Err(e) => {
+                    println!("{:?}", e);
+                    if retry > 0 {
+                        try_call_api(latitude, longitude, status, request_url, retry - 1).await;
+                    }
+                },
+            }
+        })
     }
 }
 
